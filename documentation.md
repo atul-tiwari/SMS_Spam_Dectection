@@ -1,5 +1,3 @@
-Certainly, here's a brief documentation for the provided code:
-
 **Title:** Text Classification and Model Evaluation
 
 **Description:** This code performs text classification on a dataset of messages (e.g., emails or text messages) to determine whether they are "spam" or "not spam" (ham). The code follows a series of steps, including data preprocessing, feature extraction, and model evaluation. Below are the key components of the code:
