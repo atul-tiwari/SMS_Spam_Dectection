@@ -1,0 +1,105 @@
+# Import necessary libraries
+import numpy as np
+import pandas as pd
+import re
+from collections import Counter
+
+Df = pd.read_csv(r"E:\Code\Farzad\spam.csv", encoding='Latin-1')
+print(Df['Label'].unique())
+Df['Target'] = Df['Label'].apply(lambda x: 1 if x == 'spam' else 0)
+
+Word_Freq_Dict = {}
+
+for index, row in Df.iterrows():
+    for word in row['Text'].split(' '):
+        wd = word.lower()
+        if wd in Word_Freq_Dict:
+            Word_Freq_Dict[wd] += 1
+        else:
+            Word_Freq_Dict[wd] = 1
+
+for letter in range(ord('a'), ord('z') + 1):
+    Word_Freq_Dict[chr(letter)] = 0
+for word in ['the', 'an', 'in', 'to', 'is', 'for', 'he', 'she', 'its', 'have', 'and', 'of', 'are', 'it', 'will', 'do', 'but', '', 'with']:
+    Word_Freq_Dict[word] = 0
+
+def extract_text_features(text):
+    num_characters = len(text)
+    
+    currency_symbols = re.findall(r'[$€¥£¢₹₽₱₸₺₿₡₵₴₣₩]', text)
+    num_currency_symbols = len(currency_symbols)
+
+    num_numeric_strings = len(re.findall(r'\d+', text))
+
+    most_popular_term, most_popular_term_frequency = '-', 0
+
+    words = re.findall(r'\b\w+\b', text.lower())  # Tokenize text into words
+    if not words:
+        most_popular_term = "No words found"
+        most_popular_term_frequency = 0
+    else:
+        word_frequency = Counter(words)  # Count word frequencies
+        most_popular_term, most_popular_term_frequency = word_frequency.most_common(1)[0]
+
+    return num_characters, num_currency_symbols, num_numeric_strings, most_popular_term, most_popular_term_frequency
+
+Df[['Num_Characters', 'Num_Currency_Symbols', 'Num_Numeric_Strings', 'Most_Popular_Term', 'Most_Popular_Term_Frequency']] = Df['Text'].apply(extract_text_features).apply(pd.Series)
+
+X = Df[['Num_Characters', 'Num_Currency_Symbols', 'Num_Numeric_Strings', 'Most_Popular_Term_Frequency']]
+Y = Df[['Target']]
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import confusion_matrix
+
+def evaluate_model(model, X, y, test_size=0.2):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+    
+    model.fit(X_train, y_train.values.ravel())
+    
+    y_pred = model.predict(X_test)
+    cm = confusion_matrix(y_test, y_pred)
+
+    scores = cross_val_score(model, X, y.values.ravel(), cv=10, scoring='accuracy')
+    
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.title('Confusion Matrix')
+    plt.subplot(1, 2, 2)
+    plt.plot(range(1, 10 + 1), scores, marker='o', linestyle='-')
+    plt.title('Cross-Validation Scores')
+    plt.xlabel('Fold')
+    plt.ylabel('Accuracy')
+    plt.tight_layout()
+    plt.show()
+
+    TP = cm[1, 1]
+    FP = cm[0, 1]
+    TN = cm[0, 0]
+    FN = cm[1, 0]
+    TPR = TP / (TP + FN)
+    FPR = FP / (FP + TN)
+    Accuracy = np.mean(scores)
+    return Accuracy, TPR, FPR
+
+
+from sklearn.tree import DecisionTreeClassifier
+dt_model = DecisionTreeClassifier()
+Accuracy, TPR, FPR = evaluate_model(dt_model, X, Y)
+print("Decision Tree Model Evaluation:")
+print("Mean Accuracy:", round(Accuracy * 100, 2), "%")
+print("True Positive Rate (TPR):", round(TPR * 100, 2), "%")
+print("False Positive Rate (FPR):", round(FPR * 100, 2), "%")
+
+
+from sklearn.naive_bayes import MultinomialNB
+dt_model = MultinomialNB()
+Accuracy, TPR, FPR = evaluate_model(dt_model, X, Y)
+print("Multinomial Naive Bayes Model Evaluation:")
+print("Mean Accuracy:", round(Accuracy * 100, 2), "%")
+print("True Positive Rate (TPR):", round(TPR * 100, 2), "%")
+print("False Positive Rate (FPR):", round(FPR * 100, 2), "%")
